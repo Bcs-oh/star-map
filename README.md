@@ -41,6 +41,21 @@ The input fields start empty. Enter:
 
 City and object names are case-sensitive and must match the CSV files. Use **Show All Stars** to display the full catalog, the slider to zoom, and **-1 Hour / +1 Hour** to change the time. Press **Escape** or close the window to exit.
 
+Dates must exist in the calendar, with a year from `1` to `9999`. Hours are `0–23`; minutes and seconds are `0–59`. Invalid input displays a warning instead of updating the observation. The hour buttons handle leap days and year rollover, and stop at the supported year limits.
+
+Half-hour and quarter-hour timezone labels retain their minutes, for example Kathmandu's `UTC+5:45`. Faint objects have a minimum one-pixel marker so they remain visible and clickable.
+
+## Regression checks
+
+With SplashKit installed, run these commands from the repository root:
+
+```bash
+skm clang++ -std=c++17 tests/gui_regression.cpp gui.cpp utilities.cpp -o gui-regression
+./gui-regression
+```
+
+On Windows, run `./gui-regression.exe`. The checks cover valid and invalid calendar dates, leap days, hour-button rollover and year limits, UTC-offset formatting, and marker sizes across the supplied catalog. They do not open a graphical window or call the weather service.
+
 ## Optional weather and music
 
 The sky map runs without an API key. To enable weather, provide your own OpenWeather key in the launching terminal:
@@ -72,7 +87,7 @@ The modular source files are used for the build. The original submission also co
 
 ## Coursework scope
 
-This is an educational visualization. Catalog coordinates are fixed, including those for the Sun, Moon, and planets; the program does not calculate orbital ephemerides. Date input checks integer syntax rather than complete calendar validity. Forecasts outside the available forecast window are approximated using available endpoints. Additional inherited limitations are listed in [repository notes](docs/REPOSITORY_NOTES.md).
+This is an educational visualization. Catalog coordinates are fixed, including those for the Sun, Moon, and planets; the program does not calculate orbital ephemerides. Forecasts outside the available forecast window are approximated using available endpoints. Additional inherited limitations are listed in [repository notes](docs/REPOSITORY_NOTES.md).
 
 The [original interface sketch](docs/images/design-sketch.jpg) records the design stage. The screenshot above was rendered from the repository edition using the sample inputs listed here, with weather and music disabled.
 

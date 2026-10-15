@@ -14,13 +14,20 @@ This repository edition was prepared from the supplied FIT1045 coursework files 
 
 The original astronomical calculations and overall interface design were retained. AI assistance was used for this repository preparation: source review, documentation, credential removal, resource adjustments, and local verification. This note does not describe or infer how the original coursework was authored.
 
+## Observation reliability update
+
+The October 16 update adds complete calendar and clock validation, including Gregorian leap-year rules and years 1–9999. Invalid input displays an inline warning and does not update the observation. The two hour controls share the same rollover logic and cannot move beyond the supported year limits.
+
+UTC labels preserve fractional offsets as hours and minutes without changing the double used in astronomical calculations. Object marker radii have a one-pixel minimum, used for both drawing and click selection. The original bright-object sizes are retained.
+
+The accompanying `tests/gui_regression.cpp` performs 175 checks against calendar edge cases, time rollover, timezone labels, and the complete supplied object catalog. All checks passed with the local SplashKit installation. The README documents how to run them.
+
+Visual checks were rendered from the updated interface with a temporary local harness: [Kathmandu's quarter-hour timezone](images/fractional-timezone.png) and [rejection of February 30](images/invalid-date.png). Weather and background music were disabled during these checks.
+
 ## Inherited limitations
 
 - Solar-system objects use static catalog coordinates for every date.
 - City and target matching is exact and case-sensitive.
-- Date/time fields validate integer syntax without full range or calendar validation.
-- Fractional UTC offsets are truncated in the displayed timezone label.
-- Very faint catalog objects can receive a negative calculated marker radius.
 - Forecast timestamps outside the returned interval use endpoint approximations.
 - A network request is synchronous and can temporarily pause the interface. Live authenticated weather retrieval has not been verified.
 

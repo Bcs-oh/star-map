@@ -2,6 +2,8 @@
 /star-map
 /star-map.exe
 /a.out
+/gui-regression
+/gui-regression.exe
 *.o
 *.obj
 *.dSYM/

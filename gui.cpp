@@ -1,4 +1,5 @@
 #include "gui.h"
+#include <cmath>
 #include <fstream>
 
 /**
@@ -36,19 +37,116 @@ void draw_module_background(double x, double y, double width, double height, con
 }
 
 /**
- * Check whether all six text boxes in Module 2 are filled with valid numbers.
+ * Check that the six observation fields form a valid calendar date and time.
  */
 bool check_timeboxs(const GUI_State &state)
 {
-    if (is_integer(state.input_year) && is_integer(state.input_month) && is_integer(state.input_day) &&
-        is_integer(state.input_hour) && is_integer(state.input_minute) && is_integer(state.input_second))
-    {
-        return true;
-    }
-    else
+    // Bound the field lengths before converting, including unusually large input.
+    if (state.input_year.length() > 4 || state.input_month.length() > 2 ||
+        state.input_day.length() > 2 || state.input_hour.length() > 2 ||
+        state.input_minute.length() > 2 || state.input_second.length() > 2)
     {
         return false;
     }
+
+    if (!is_integer(state.input_year) || !is_integer(state.input_month) || !is_integer(state.input_day) ||
+        !is_integer(state.input_hour) || !is_integer(state.input_minute) || !is_integer(state.input_second))
+    {
+        return false;
+    }
+
+    int year = to_integer(state.input_year);
+    int month = to_integer(state.input_month);
+    int day = to_integer(state.input_day);
+    int hour = to_integer(state.input_hour);
+    int minute = to_integer(state.input_minute);
+    int second = to_integer(state.input_second);
+
+    if (year < 1 || year > 9999 || month < 1 || month > 12)
+    {
+        return false;
+    }
+
+    return day >= 1 && day <= process_date(month, year) &&
+           hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59 &&
+           second >= 0 && second <= 59;
+}
+
+bool shift_observation_hour(observer_data &observer, int change)
+{
+    if (change != -1 && change != 1)
+    {
+        return false;
+    }
+    if ((change < 0 && observer.year == 1 && observer.month == 1 && observer.day == 1 && observer.hour == 0) ||
+        (change > 0 && observer.year == 9999 && observer.month == 12 && observer.day == 31 && observer.hour == 23))
+    {
+        return false;
+    }
+
+    observer.hour += change;
+    if (observer.hour < 0)
+    {
+        observer.hour = 23;
+        observer.day -= 1;
+        if (observer.day < 1)
+        {
+            observer.month -= 1;
+            if (observer.month < 1)
+            {
+                observer.month = 12;
+                observer.year -= 1;
+            }
+            observer.day = process_date(observer.month, observer.year);
+        }
+    }
+    else if (observer.hour > 23)
+    {
+        observer.hour = 0;
+        observer.day += 1;
+        if (observer.day > process_date(observer.month, observer.year))
+        {
+            observer.day = 1;
+            observer.month += 1;
+            if (observer.month > 12)
+            {
+                observer.month = 1;
+                observer.year += 1;
+            }
+        }
+    }
+    return true;
+}
+
+string format_utc_offset(double timezone)
+{
+    int total_minutes = static_cast<int>(std::round(std::abs(timezone) * 60.0));
+    int hours = total_minutes / 60;
+    int minutes = total_minutes % 60;
+    string sign = timezone < 0 ? "-" : "+";
+    string label = "(UTC" + sign + to_string(hours);
+
+    if (minutes != 0)
+    {
+        label += ":";
+        if (minutes < 10)
+        {
+            label += "0";
+        }
+        label += to_string(minutes);
+    }
+
+    return label + ")";
+}
+
+double object_marker_radius(double apparent_magnitude)
+{
+    double radius = 5.0 - apparent_magnitude / 2.0;
+    if (radius < 1.0)
+    {
+        return 1.0;
+    }
+    return radius;
 }
 
 // Determine if it is one of the five celestial objects that are always displayed.
@@ -167,20 +265,16 @@ void start_gui(Star_map_data &star_map, celestial_object *target)
         string utc_text = "";
         if (found_city.city_name != "")
         {
-            int timezone = star_map.observer.timezone;
-            if (timezone >= 0)
-            {
-                utc_text = "(UTC+" + to_string(timezone) + ")";
-            }
-            else
-            {
-                utc_text = "(UTC" + to_string(timezone) + ")";
-            }
+            utc_text = format_utc_offset(star_map.observer.timezone);
         }
-        draw_text(utc_text, COLOR_BLACK, "my_font", 14, state.panel_x + 245, module2_y + 80);
+        draw_text(utc_text, COLOR_BLACK, "my_font", 12, state.panel_x + 240, module2_y + 80);
 
-        // Check that if all time input boxes are filled with valid numbers.
+        // Validate the full date and time before updating observation data.
         bool time_valid = check_timeboxs(state);
+        if (!time_valid)
+        {
+            draw_text("Enter a valid date and time.", COLOR_RED, "my_font", 11, state.panel_x + 20, module2_y + 100);
+        }
 
         if (time_valid)
         {
@@ -193,58 +287,21 @@ void start_gui(Star_map_data &star_map, celestial_object *target)
         }
 
         // Time control buttons
-        if (time_valid && button("-1 Hour", rectangle_from(state.panel_x + 20, module2_y + 115, 80, 28)))
+        if (time_valid && button("-1 Hour", rectangle_from(state.panel_x + 20, module2_y + 115, 80, 28)) &&
+            shift_observation_hour(star_map.observer, -1))
         {
-            star_map.observer.hour -= 1;
-            if (star_map.observer.hour < 0)
-            {
-                star_map.observer.hour = 23;
-                star_map.observer.day -= 1;
-                if (star_map.observer.day < 1)
-                {
-                    star_map.observer.month -= 1;
-                    if (star_map.observer.month < 1)
-                    {
-                        star_map.observer.month = 12;
-                        star_map.observer.year -= 1;
-                        state.input_year = to_string(star_map.observer.year);
-                    }
-                    star_map.observer.day = process_date(star_map.observer.month, star_map.observer.year);
-                    state.input_month = to_string(star_map.observer.month);
-                }
-                state.input_day = to_string(star_map.observer.day);
-            }
-
-            // Update the time previously entered by the user
+            state.input_year = to_string(star_map.observer.year);
+            state.input_month = to_string(star_map.observer.month);
+            state.input_day = to_string(star_map.observer.day);
             state.input_hour = to_string(star_map.observer.hour);
         }
 
-        if (time_valid && button("+1 Hour", rectangle_from(state.panel_x + 220, module2_y + 115, 80, 28)))
+        if (time_valid && button("+1 Hour", rectangle_from(state.panel_x + 220, module2_y + 115, 80, 28)) &&
+            shift_observation_hour(star_map.observer, 1))
         {
-            star_map.observer.hour += 1;
-            if (star_map.observer.hour > 23)
-            {
-                star_map.observer.hour = 0;
-                star_map.observer.day += 1;
-
-                // See how many days are there in this month.
-                int max_days = process_date(star_map.observer.month, star_map.observer.year);
-                if (star_map.observer.day > max_days)
-                {
-                    star_map.observer.day = 1;
-                    star_map.observer.month += 1;
-                    if (star_map.observer.month > 12)
-                    {
-                        star_map.observer.month = 1;
-                        star_map.observer.year += 1;
-                        state.input_year = to_string(star_map.observer.year);
-                    }
-                    state.input_month = to_string(star_map.observer.month);
-                }
-                state.input_day = to_string(star_map.observer.day);
-            }
-
-            // Update the time previously entered by the user
+            state.input_year = to_string(star_map.observer.year);
+            state.input_month = to_string(star_map.observer.month);
+            state.input_day = to_string(star_map.observer.day);
             state.input_hour = to_string(star_map.observer.hour);
         }
 
@@ -300,7 +357,7 @@ void start_gui(Star_map_data &star_map, celestial_object *target)
         }
         else if (target_found && !time_valid)
         {
-            draw_text("Please enter a valid time first.", COLOR_RED, "my_font", 14, state.panel_x + 20, module3_y + 75);
+            draw_text("Enter a valid date and time first.", COLOR_RED, "my_font", 14, state.panel_x + 20, module3_y + 75);
         }
         else if (!target_found)
         {
@@ -338,7 +395,7 @@ void start_gui(Star_map_data &star_map, celestial_object *target)
         }
         else if (target_found && !time_valid)
         {
-            draw_text("Please enter a valid time first.", COLOR_RED, "my_font", 14, state.panel_x + 20, module4_y + 45);
+            draw_text("Enter a valid date and time first.", COLOR_RED, "my_font", 14, state.panel_x + 20, module4_y + 45);
         }
         else if (!target_found && found_city.city_name != "")
         {
@@ -490,7 +547,7 @@ void start_gui(Star_map_data &star_map, celestial_object *target)
                     }
 
                     // The size of each celestial objects is determined by its apparent magnitude.
-                    double object_radius = 5.0 - (object->apparent_magnitude / 2.0);
+                    double object_radius = object_marker_radius(object->apparent_magnitude);
 
                     // If user click on a star on the star map, it will be set as the target.
                     if (mouse_clicked(LEFT_BUTTON))
@@ -553,7 +610,7 @@ void start_gui(Star_map_data &star_map, celestial_object *target)
         }
         else if (!time_valid)
         {
-            draw_text("Please enter a valid time.", COLOR_BLACK, "my_font", 14, 30, 55);
+            draw_text("Enter a valid date and time.", COLOR_BLACK, "my_font", 14, 30, 55);
         }
 
         draw_interface();

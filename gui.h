@@ -22,6 +22,18 @@ struct GUI_State
     string bgm_text = "";
 };
 
+/** Check observation fields against calendar and clock ranges (years 1-9999). */
+bool check_timeboxs(const GUI_State &state);
+
+/** Shift a valid observation by one hour without leaving years 1-9999. */
+bool shift_observation_hour(observer_data &observer, int change);
+
+/** Format a UTC offset without losing half-hour or quarter-hour minutes. */
+string format_utc_offset(double timezone);
+
+/** Calculate a visible marker radius, with a one-pixel minimum. */
+double object_marker_radius(double apparent_magnitude);
+
 /**
  * Starts the graphical user interface for the Star Map.
  * 
