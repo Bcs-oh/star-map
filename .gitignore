@@ -18,6 +18,12 @@
 *.pem
 *.key
 
+# Personal observing sessions and exports
+/.star-map-plan.txt
+/.star-map-plan.txt.tmp-*
+/observing-plan.csv
+/observing-plan.csv.tmp-*
+
 # Optional audio and recordings
 resources/sounds/*
 !resources/sounds/README.md
